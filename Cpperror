@@ -1,0 +1,259 @@
+#include <Windows.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
+LRESULT CALLBACK MapWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK GameWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+void DrawMap(HDC hdc);
+void UpdateBoatPosition();
+void CalculateBestRoute();
+void DrawBestRoute(HDC hdc);
+void ZoomIn();
+void ZoomOut();
+void SetStartingPosition();
+
+// Constants
+const int MAP_WIDTH = 800;
+const int MAP_HEIGHT = 600;
+const int CELL_SIZE = 25;
+const int NUM_COLUMNS = 26;
+const int NUM_ROWS = 26;
+const int MAX_DISTANCE = 999999;
+
+// Structures
+struct MapCell {
+    int x;
+    int y;
+    bool isLand;
+};
+
+struct MapNode {
+    int x;
+    int y;
+    int distance;
+    int heuristic;
+    MapNode* parent;
+    bool operator<(const MapNode& other) const {
+        return (distance + heuristic) < (other.distance + other.heuristic);
+    }
+    int GetTotalCost() const {
+        return distance + heuristic;
+    }
+    int GetDistance(const MapNode* other) const {
+        int dx = abs(x - other->x);
+        int dy = abs(y - other->y);
+        if (dx > dy) {
+            return 14 * dy + 10 * (dx - dy);
+        }
+        else {
+            return 14 * dx + 10 * (dy - dx);
+        }
+    }
+    int GetCenterX() const {
+        return x * CELL_SIZE + CELL_SIZE / 2;
+    }
+    int GetCenterY() const {
+        return y * CELL_SIZE + CELL_SIZE / 2;
+    }
+};
+
+// Global variables
+HWND hMapWnd, hGameWnd, hStartBtn;
+HDC hMapDC, hGameDC, hBmpDC;
+HBITMAP hMapBitmap, hScaledBitmap;
+int zoomLevel = 0;
+int boatGameX = -1, boatGameY = -1;
+int startX = -1, startY = -1, endX = -1, endY = -1;
+std::vector<MapCell> mapCells;
+std::vector<MapNode*> mapNodes;
+std::vector<MapNode*> openList;
+std::vector<MapNode*> closedList;
+std::vector<MapNode*> bestRoute;
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    // Create the map window class
+    WNDCLASS wc = { 0 };
+    wc.lpfnWndProc = MapWndProc;
+    wc.hInstance = hInstance;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = "MapWindowClass";
+    RegisterClass(&wc);
+
+    // Create the game window class
+    wc.lpfnWndProc = GameWndProc;
+    wc.hInstance = hInstance;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = "GameWindowClass";
+    RegisterClass(&wc);
+
+    // Create the map window
+    hMapWnd = CreateWindowEx(0, "MapWindowClass", "Sea of Thieves Map", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, MAP_WIDTH, MAP_HEIGHT, NULL, NULL, hInstance, NULL);
+    // Create the game window
+    hGameWnd = CreateWindowEx(0, "GameWindowClass", "Sea of Thieves", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, MAP_WIDTH, MAP_HEIGHT, NULL, NULL, hInstance, NULL);
+
+    // Create the starting position button
+    hStartBtn = CreateWindow("BUTTON", "Set Starting Position", WS_VISIBLE | WS_CHILD, 10, 10, 150, 25, hMapWnd, (HMENU)1, NULL, NULL);
+
+    // Show both windows
+    ShowWindow(hMapWnd, nCmdShow);
+    ShowWindow(hGameWnd, nCmdShow);
+
+    // Load and display the map image
+    hMapDC = GetDC(hMapWnd);
+    hMapBitmap = (HBITMAP)LoadImageA(NULL, "sotmap.jpg", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    hBmpDC = CreateCompatibleDC(hMapDC);
+    SelectObject(hBmpDC, hMapBitmap);
+    BitBlt(hMapDC, 0, 0, MAP_WIDTH, MAP_HEIGHT, hBmpDC, 0, 0, SRCCOPY);
+    // Set up the map cells
+    for (int y = 0; y < NUM_ROWS; y++) {
+        for (int x = 0; x < NUM_COLUMNS; x++) {
+            MapCell cell;
+            cell.x = x;
+            cell.y = y;
+            int color = GetPixel(hBmpDC, x * CELL_SIZE + CELL_SIZE / 2, y * CELL_SIZE + CELL_SIZE / 2);
+            cell.isLand = (color == RGB(0, 0, 0));
+            mapCells.push_back(cell);
+        }
+    }
+
+    // Set up the map nodes
+    for (int y = 0; y < NUM_ROWS; y++) {
+        for (int x = 0; x < NUM_COLUMNS; x++) {
+            MapNode* node = new MapNode;
+            node->x = x;
+            node->y = y;
+            node->distance = MAX_DISTANCE;
+            node->heuristic = 0;
+            node->parent = NULL;
+            mapNodes.push_back(node);
+        }
+    }
+
+    // Set up the starting position
+    UpdateBoatPosition();
+
+    // Message loop
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    // Clean up
+    DeleteDC(hBmpDC);
+    DeleteObject(hMapBitmap);
+    ReleaseDC(hMapWnd, hMapDC);
+    ReleaseDC(hGameWnd, hGameDC);
+
+    return (int)msg.wParam;
+}
+
+void DrawMap(HDC hdc)
+{
+    HDC hMapDC = GetDC(hMapWnd);
+    BitBlt(hdc, 0, 0, MAP_WIDTH * zoomLevel, MAP_HEIGHT * zoomLevel, hMapDC, 0, 0, SRCCOPY);
+    ReleaseDC(hMapWnd, hMapDC);
+}
+
+void UpdateBoatPosition()
+{
+    // Get the game window position and size
+    RECT rect;
+    GetWindowRect(hGameWnd, &rect);
+    int gameX = rect.left;
+    int gameY = rect.top;
+    int gameWidth = rect.right - rect.left;
+    int gameHeight = rect.bottom - rect.top;
+
+    // Set the map window position and size
+    SetWindowPos(hMapWnd, HWND_TOP, gameX + gameWidth + 10, gameY, mapWidth, mapHeight, SWP_SHOWWINDOW);
+
+    // Start the game loop
+    while (true) {
+        // Get the game screen data
+        HDC hGameDC = GetDC(hGameWnd);
+        HDC hMapDC = GetDC(hMapWnd);
+        BitBlt(hMapDC, 0, 0, mapWidth, mapHeight, hGameDC, mapX, mapY, SRCCOPY);
+        ReleaseDC(hMapWnd, hMapDC);
+        ReleaseDC(hGameWnd, hGameDC);
+        // Sleep for a short time
+        Sleep(10);
+    }
+
+    // Cleanup
+    DestroyWindow(hMapWnd);
+    UnregisterClass(szMapClass, hInst);
+
+    return 0;
+}
+
+LRESULT CALLBACK MapWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_PAINT:
+        // Paint the map
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+
+        // Draw the map
+
+        EndPaint(hWnd, &ps);
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+
+    return 0;
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    // Save the instance handle
+    hInst = hInstance;
+
+    // Create the game window
+    HWND hGameWnd = CreateWindow(szGameClass, "My Game", WS_OVERLAPPEDWINDOW, gameX, gameY, gameWidth, gameHeight, NULL, NULL, hInstance, NULL);
+
+    // Create the map window
+    HWND hMapWnd = CreateWindow(szMapClass, "Map", WS_OVERLAPPEDWINDOW, mapX, mapY, mapWidth, mapHeight, NULL, NULL, hInstance, NULL);
+
+    // Show the game and map windows
+    ShowWindow(hGameWnd, nCmdShow);
+    ShowWindow(hMapWnd, nCmdShow);
+
+    // Update the game and map windows
+    UpdateWindow(hGameWnd);
+    UpdateWindow(hMapWnd);
+
+    // Enter the message loop
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    // Destroy the game window
+    DestroyWindow(hGameWnd);
+
+    // Unregister the game window class
+    UnregisterClass(szGameClass, hInstance);
+
+    // Destroy the map window
+    DestroyWindow(hMapWnd);
+
+    // Unregister the map window class
+    UnregisterClass(szMapClass, hInst);
+
+    return 0;
+}
