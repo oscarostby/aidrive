@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Om avfallshåndtering</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  </head>
+<body>
+  <header>
+    <nav>
+      <ul>
+        <li><a href="#sorting-guide" class="active">Om avfallshåndtering</a></li>
+        <li><a href="#video-section">NorgesAvfall</a></li>
+        <li><a href="#recycling-stations">Resirkuleringsstasjoner</a></li>
+        <li><a href="/logg.html">Logg</a></li>
+      </ul>
+    </nav>
+  </header>
+  
+    <div class="background"></div>
+    <img class="logo" src="logo.png" alt="My Logo">
+  <main>
+        <section class="slider">
+            <img src="bob.jpg" alt="Image of Bob" class="slide active-slide">
+            <img src="beob.jpg" alt="Image of Beob" class="slide">
+            <img src="biob.jpg" alt="Image of Biob" class="slide">
+        </section>
+        <section class="info">
+            <h1>Om avfallshåndtering</h1>
+            <p>Norges sikreste side om avfallshåndtering</p>
+        </section>
+    </main>
+<script src="scripts.js"></script>
+
+
+
+  
+
+<section class="sorting-guide">
+
+
+    <div class="image-container">
+        <div class="text-overlay">
+          <h2>Søppel problemer
+          </h2>
+          <p>Norges største søppel problemer</p>
+        </div>
+      </div>
+      
+
+
+    <div class="waste-types">
+      <div class="waste-type">
+        <img src="matavfall.jpg" alt="Food Waste">
+        <div class="tooltip">Food waste goes in the green bin</div>
+      </div>
+      <div class="waste-type">
+        <img src="elektro.jpg" alt="Electronic Waste">
+        <div class="tooltip">Electronic waste goes in the blue bin</div>
+      </div>
+      <div class="waste-type">
+        <img src="resavfall.jpg" alt="General Waste">
+        <div class="tooltip">General waste goes in the black bin</div>
+      </div>
+      <div class="waste-type">
+        <img src="/plastikk.jpg" alt="Plastic Waste">
+        <div class="tooltip">Plastic waste goes in the yellow bin</div>
+      </div>
+      <div class="waste-type">
+        <img src="planter.jpg" alt="Garden Waste">
+        <div class="tooltip">Garden waste goes in the brown bin</div>
+      </div>
+    </div>
+    <br><br>
+    <br><br>
+    <br><br>
+        <div class="farge">
+            <br><br>
+
+            <section class="video-section">
+                <div class="container">
+                    <div class="info-text">
+                        <h3>Avfallshåndtering</h3>
+                        <p>
+                           Information om norges avfallshåndtering og hvordan alt fungerer
+                        </p>
+                    </div>
+                    <div class="video-wrapper">
+                        <div class="video-background"></div>
+                        <br>
+                        <div class="vid">
+                        <video id="infoVideo" width="100%" poster="Fisk.png" preload="none">
+                            <source src="/fisk.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="play-button" data-playing="false">
+                            <div class="play-icon"></div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </section>
+            
+            
+            
+              <br><br>
+              <br><br>
+              <br><br>
+              </div>
+              
+      
+      
+
+  </section>
+  
+  <section id="recycling-stations">
+    <div class="stations-grid">
+    </div>
+
+
+
+    <div class="cta-container">
+      <button class="cta-button" id="cta-button">Finn en resirkuleringsstasjon nærme deg</button>
+    </div>
+    
+    
+    
+    
+
+    
+    <div id="map" class="map-container"></div>
+  </section>
+  <script src="map.js"></script>
+
+  
+
+
+  <div id="cookie-banner">
+    <div class="cookie-banner-content">
+      <p>We collect cookies to enhance your browsing experience. By continuing to use our site, you agree to our <a href="your-privacy-policy-url">Privacy Policy</a>.</p>
+      <button id="cookie-accept">Accept</button>
+    </div>
+  </div>
+  
+
+    
+    
+    
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+
+
+
+
+
+</body>
+</html>
